@@ -1,0 +1,14 @@
+POST http://localhost:5001/api/Reservas
+Content-Type: application/json
+
+{
+  "id": 6,
+  "local": "string",
+  "sala": "string",
+  "dataHoraInicio": "2025-08-07T00:53:21.367Z",
+  "dataHoraFim": "2025-08-07T00:53:21.367Z",
+  "responsavel": "string",
+  "cafe": true,
+  "quantidadePessoasCafe": 0,
+  "descricao": "string"
+}

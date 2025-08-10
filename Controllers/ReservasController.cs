@@ -9,18 +9,48 @@ namespace ReservaSalaAPI.Controllers;
 [Route("api/[controller]")]
 public class ReservasController : ControllerBase
 {
-    private readonly ReservaContext _context;
+    private readonly AppDbContext _context;
 
-    public ReservasController(ReservaContext context)
+    public ReservasController(AppDbContext context)
     {
         _context = context;
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Reserva>>> GetReservas()
+    public async Task<IActionResult> GetReservas(
+    [FromQuery] int page = 0,
+    [FromQuery] int size = 10,
+    [FromQuery] string? q = null)
     {
-        return await _context.Reservas.ToListAsync();
+        var query = _context.Reservas.AsQueryable();
+
+        // Filtro de busca
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var lower = q.ToLower();
+            query = query.Where(r =>
+                r.Local.ToLower().Contains(lower) ||
+                r.Sala.ToLower().Contains(lower) ||
+                r.Responsavel.ToLower().Contains(lower) ||
+                r.Descricao.ToLower().Contains(lower)
+            );
+        }
+
+        var total = await query.CountAsync();
+
+        var data = await query
+            .OrderBy(r => r.Id)
+            .Skip(page * size)
+            .Take(size)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            total,
+            data
+        });
     }
+
 
     [HttpGet("{id}")]
     public async Task<ActionResult<Reserva>> GetReserva(int id)
@@ -36,10 +66,16 @@ public class ReservasController : ControllerBase
     public async Task<ActionResult<Reserva>> PostReserva(Reserva reserva)
     {
         // Validar choque de horário aqui (opcional, mas recomendado)
-        _context.Reservas.Add(reserva);
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetReserva), new { id = reserva.Id }, reserva);
+        try
+        {
+            _context.Reservas.Add(reserva);
+            await _context.SaveChangesAsync();
+            return Ok(reserva);
+        }
+        catch (DbUpdateException ex)
+        {
+            return BadRequest(new { error = ex.InnerException?.Message ?? ex.Message });
+        }
     }
 
     [HttpPut("{id}")]
